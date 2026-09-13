@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="huangdiv">
+    <meta name="description" content="班级座位表管理与签到工具">
+    <meta name="copyright" content="Copyright © huangdiv. Licensed under CC BY-NC-SA 4.0.">
+    <meta name="license" content="CC BY-NC-SA 4.0">
+    <link rel="author" href="https://huangdiv.com/">
+    <link rel="canonical" href="https://huangdiv.com/">
+    <title>班级座位表</title>
+    <link rel="stylesheet" href="seats-generator.css">
+</head>
+
+<body>
+    <div class="drag-hint" id="dragHint">拖放到座位或名单区域</div>
+    <div class="mobile-mode-banner" id="mobileBanner">
+        移动端模式：点击学生或座位选中，再点击目标位置完成移动。点击已选中的元素可取消选择。
+    </div>
+
+    <div class="app-info-modal" id="appInfoModal" role="dialog" aria-modal="true" aria-labelledby="appInfoTitle">
+        <div class="app-info-dialog">
+            <h4 id="appInfoTitle">班级座位表</h4>
+            <dl class="app-info-list">
+                <div><dt>版本</dt><dd>v<span id="appInfoVersion">1.1.5</span></dd></div>
+                <div><dt>作者</dt><dd>huangdiv</dd></div>
+                <div><dt>网站</dt><dd><a href="https://huangdiv.com/" target="_blank" rel="noopener noreferrer">huangdiv.com</a></dd></div>
+            </dl>
+            <p class="app-info-license">版权归作者所有。本页面内容依据 CC BY-NC-SA 4.0 许可协议发布：允许署名、非商业性使用和相同方式共享。</p>
+            <button type="button" class="app-info-close" id="appInfoClose">关闭</button>
+        </div>
+    </div>
+
+    <div class="page-title-row">
+        <h1 id="pageTitle" contenteditable="true" spellcheck="false">班级座位表</h1>
+        <span id="titleDate" class="title-date" aria-hidden="true"></span>
+    </div>
+
+    <div class="container">
+        <div class="classroom-wrapper">
+            <div class="classroom" id="classroom">
+                <div class="teacher-desk">讲台</div>
+                <!-- 座位将通过JavaScript动态生成 -->
+            </div>
+            <div class="delete-zone" id="deleteZone">
+                <span class="delete-icon">🗑️</span>
+                <span class="delete-text">拖到此处删除</span>
+            </div>
+        </div>
+
+        <div class="controls" id="controls">
+            <div class="panel-header">
+                <h3>班级座位表 <span class="app-version" id="appVersionButton" role="button" tabindex="0" aria-label="查看作者、网站和版权信息">v<span id="appVersion">1.3.1</span></span></h3>
+                <span class="panel-subtitle">拖拽学生到座位即可排座</span>
+            </div>
+
+            <!-- 统计卡片 -->
+            <div class="stats-card">
+                <div class="stats-row" id="normalStatsRow">
+                    <button type="button" class="stat-block" data-stat="totalStudents" aria-label="学生总数，点击复制姓名或下载 Excel" title="点击：复制姓名 / 下载 Excel">
+                        <div class="stat-num" id="totalStudents">0</div>
+                        <div class="stat-label">学生总数</div>
+                    </button>
+                    <button type="button" class="stat-block" data-stat="assignedStudents" aria-label="已入座，点击复制姓名或下载 Excel" title="点击：复制姓名 / 下载 Excel">
+                        <div class="stat-num" id="assignedStudents">0</div>
+                        <div class="stat-label">已入座</div>
+                    </button>
+                    <button type="button" class="stat-block" data-stat="unassignedStudents" aria-label="未入座，点击复制姓名或下载 Excel" title="点击：复制姓名 / 下载 Excel">
+                        <div class="stat-num" id="unassignedStudents">0</div>
+                        <div class="stat-label">未入座</div>
+                    </button>
+                </div>
+                <div class="stats-row checkin-stats" id="checkinStatsRow" style="display:none;">
+                    <button type="button" class="stat-block" data-stat="assignedStudentsCheckin" aria-label="入座学生数，点击复制姓名或下载 Excel" title="点击：复制姓名 / 下载 Excel">
+                        <div class="stat-num" id="assignedStudentsCheckin">0</div>
+                        <div class="stat-label">入座学生数</div>
+                    </button>
+                    <button type="button" class="stat-block" data-stat="checkedInCount" aria-label="已签到，点击复制姓名或下载 Excel" title="点击：复制姓名 / 下载 Excel">
+                        <div class="stat-num" id="checkedInCount">0</div>
+                        <div class="stat-label">已签到</div>
+                    </button>
+                    <button type="button" class="stat-block" data-stat="notCheckedInCount" aria-label="未签到，点击复制姓名或下载 Excel" title="点击：复制姓名 / 下载 Excel">
+                        <div class="stat-num" id="notCheckedInCount">0</div>
+                        <div class="stat-label">未签到</div>
+                    </button>
+                </div>
+                <div class="stats-row group-stats" id="groupStatsRow" style="display:none;">
+                    <button type="button" class="stat-block stat-block-static" id="groupStatSlot1" tabindex="-1">
+                        <div class="stat-num" id="groupStatVal1">未选择</div>
+                        <div class="stat-label" id="groupStatLabel1">当前分组</div>
+                    </button>
+                    <button type="button" class="stat-block stat-block-static" id="groupStatSlot2" tabindex="-1">
+                        <div class="stat-num" id="groupStatVal2">0</div>
+                        <div class="stat-label" id="groupStatLabel2">分组人数</div>
+                    </button>
+                    <button type="button" class="stat-block stat-block-static" id="groupStatSlot3" tabindex="-1">
+                        <div class="stat-num" id="groupStatVal3">—</div>
+                        <div class="stat-label" id="groupStatLabel3">即将轮换到</div>
+                    </button>
+                </div>
+                <div class="checkin-mini" id="checkinMini">
+                    <div class="checkin-mini-label">
+                        <span>签到</span>
+                        <span class="checkin-mini-rate" id="checkinRate">0%</span>
+                    </div>
+                    <div class="checkin-mini-bar">
+                        <div class="checkin-mini-fill" id="checkinProgressBar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷操作 -->
+            <div class="quick-actions">
+                <div class="action-btn-wrapper">
+                    <button id="modeSwitchBtn" class="action-btn" title="点击轮换模式：普通模式 → 签到模式 → 分组模式">
+                        <span class="action-icon" id="modeSwitchIcon">▦</span>
+                        <span id="modeSwitchLabel">普通模式</span>
+                        <!-- 占位箭头:与带下拉的按钮(随机排座/打印)保持同样的三段式高度 -->
+                        <span class="dropdown-caret caret-placeholder" aria-hidden="true">▾</span>
+                    </button>
+                </div>
+                <div class="action-btn-wrapper">
+                    <div class="action-btn-split">
+                        <button id="smartArrangeBtn" class="action-btn action-btn-split-main" title="按下方选项的设置智能排座">
+                            <span class="action-icon">⇄</span>
+                            <span>智能排座</span>
+                        </button>
+                        <button id="randomDropdownBtn" class="action-btn action-btn-dropdown action-btn-split-caret" aria-haspopup="menu" aria-expanded="false" aria-controls="randomDropdown" title="智能排座选项与设置">
+                            <span class="dropdown-caret" aria-hidden="true">▾</span>
+                        </button>
+                    </div>
+                    <div id="randomDropdown" class="print-dropdown" role="menu" style="display:none;">
+                        <div class="dropdown-switch-row" role="menuitem" aria-checked="false" tabindex="0" data-toggle="mixed">
+                            <span class="print-dropdown-icon" aria-hidden="true">👫</span>
+                            <span class="dropdown-switch-label">男女同桌</span>
+                            <span class="dropdown-switch" aria-hidden="true"></span>
+                        </div>
+                        <div class="dropdown-switch-row" role="menuitem" aria-checked="false" tabindex="0" data-toggle="samegender">
+                            <span class="print-dropdown-icon" aria-hidden="true">👬</span>
+                            <span class="dropdown-switch-label">男女不同桌</span>
+                            <span class="dropdown-switch" aria-hidden="true"></span>
+                        </div>
+                        <div class="dropdown-switch-row" role="menuitem" aria-checked="false" tabindex="0" data-toggle="rotate">
+                            <span class="print-dropdown-icon" aria-hidden="true">🔄</span>
+                            <span class="dropdown-switch-label">小组轮换</span>
+                            <span class="dropdown-switch" aria-hidden="true"></span>
+                        </div>
+                        <div class="dropdown-step-row" id="rotateStepRow" style="display:none;">
+                            <span class="dropdown-step-label">轮换步长</span>
+                            <button type="button" class="dropdown-step-btn" id="rotateStepMinus" data-step="-1" aria-label="减小轮换步长">−</button>
+                            <span class="dropdown-item-badge" id="rotateOffsetBadge">+1</span>
+                            <button type="button" class="dropdown-step-btn" id="rotateStepPlus" data-step="1" aria-label="增大轮换步长">＋</button>
+                        </div>
+                        <div class="print-dropdown-divider"></div>
+                        <div class="print-dropdown-item" role="menuitem" tabindex="0" data-action="pairSettings">
+                            <span class="print-dropdown-icon" aria-hidden="true">💞</span>
+                            <span class="pair-settings-label">配对设置</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-btn-wrapper">
+                    <button id="printBtn" class="action-btn action-btn-dropdown" aria-haspopup="menu" aria-expanded="false" aria-controls="printDropdown">
+                        <span class="action-icon">⎙</span>
+                        <span>打印/PDF</span>
+                        <span class="dropdown-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div id="printDropdown" class="print-dropdown" role="menu" style="display:none;">
+                        <div class="print-dropdown-item" role="menuitem" tabindex="0" data-action="print">
+                            <span class="print-dropdown-icon" aria-hidden="true">⎙</span>
+                            <span>打印 / 另存为PDF</span>
+                        </div>
+                        <div class="print-dropdown-item" role="menuitem" tabindex="0" data-action="exportImage">
+                            <span class="print-dropdown-icon" aria-hidden="true">🖼</span>
+                            <span>导出为图片</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 辅助操作行 -->
+            <div class="sub-actions">
+                <button id="undoBtn" class="sub-btn" disabled title="撤销">↶ 撤销</button>
+                <button id="redoBtn" class="sub-btn" disabled title="重做">↷ 重做</button>
+                <button id="toggleViewBtn" class="sub-btn">教师视角</button>
+                <button id="toggleIconsBtn" class="sub-btn">隐藏图标</button>
+            </div>
+
+            <!-- 折叠面板：座位设置 -->
+            <div class="collapse-panel collapsed">
+                <button class="collapse-header" data-target="seatSettings">
+                    <span class="collapse-title">⚙️ 座位设置</span>
+                    <span class="collapse-arrow">▾</span>
+                </button>
+                <div class="collapse-body" id="seatSettings">
+                    <div class="form-row">
+                        <div class="form-item">
+                            <label>行数</label>
+                            <input type="number" id="rowsInput" min="1" max="20" value="8">
+                        </div>
+                        <div class="form-item">
+                            <label>列数</label>
+                            <input type="number" id="colsInput" min="1" max="20" value="8">
+                        </div>
+                        <button id="applyConfigBtn" class="form-btn">应用</button>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-item">
+                            <label>走道列后</label>
+                            <input type="number" id="aisleAfterCol" min="1" max="20" value="1">
+                        </div>
+                        <div class="form-item">
+                            <label>宽度(px)</label>
+                            <input type="number" id="aisleWidth" min="10" max="100" value="30">
+                        </div>
+                        <button id="addAisleBtn" class="form-btn">添加走道</button>
+                    </div>
+                    <div id="aisleList" class="aisle-list">
+                        <span class="empty-hint">暂无走道</span>
+                    </div>
+                    <button id="resetBtn" class="danger-btn">重置座位</button>
+                </div>
+            </div>
+
+            <!-- 折叠面板：学生管理 -->
+            <div class="collapse-panel">
+                <button class="collapse-header" data-target="studentManagement">
+                    <span class="collapse-title">👥 学生管理</span>
+                    <span class="collapse-arrow">▾</span>
+                </button>
+                <div class="collapse-body" id="studentManagement">
+                    <!-- 学生列表 -->
+                    <div class="sub-section">
+                        <div class="section-head">
+                            <span>未安排座位的学生</span>
+                            <button id="quickRandomBtn" class="mini-btn">随机入座</button>
+                        </div>
+                        <div id="studentList" class="student-list drop-target">
+                        </div>
+                    </div>
+
+                    <!-- 分组管理 -->
+                    <div class="sub-section">
+                        <div class="section-head">
+                            <span>分组设置</span>
+                        </div>
+                        <div class="group-list" id="groupList">
+                            <span class="empty-hint">暂无分组</span>
+                        </div>
+
+                        <div class="student-assignment" id="studentAssignment">
+                            <div class="section-head">
+                                <span>详细设置</span>
+                            </div>
+                            <div class="student-group-selector" id="studentGroupSelector">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 折叠面板：导入导出 -->
+            <div class="collapse-panel collapsed">
+                <button class="collapse-header" data-target="ioPanel">
+                    <span class="collapse-title">📁 导入导出</span>
+                    <span class="collapse-arrow">▾</span>
+                </button>
+                <div class="collapse-body" id="ioPanel">
+                    <div class="io-section">
+                        <div class="io-title">导入学生名单 (Excel)</div>
+                        <input type="file" id="fileInput" class="file-input" accept=".xlsx, .xls">
+                        <label for="fileInput" class="io-btn">选择 Excel 文件</label>
+                        <div id="fileInfo" class="file-info"></div>
+                        <div id="previewArea" style="display:none;">
+                            <div id="sheetSelectArea" style="display:none;">
+                                <div class="section-head">
+                                    <span>选择工作表</span>
+                                </div>
+                                <select id="sheetSelect" class="full-select"></select>
+                            </div>
+                            <div class="section-head">
+                                <span>选择姓名列</span>
+                            </div>
+                            <select id="columnSelect" class="full-select"></select>
+                            
+                            <div class="group-import-section" id="groupImportSection" style="display:none;">
+                                <label class="check-row">
+                                    <input type="checkbox" id="enableGroupImport">
+                                    <span>同时导入分组</span>
+                                </label>
+                                <div id="groupImportControls" style="display:none;">
+                                    <label class="check-row">
+                                        <input type="checkbox" id="enableRowFilter">
+                                        <span>导入前先筛选数据</span>
+                                    </label>
+                                    <div id="rowFilterControls" class="import-filter-controls" style="display:none;">
+                                        <div class="section-head">
+                                            <span>筛选依据列</span>
+                                        </div>
+                                        <select id="filterColumnSelect" class="full-select"></select>
+                                        <div class="section-head">
+                                            <span>保留的数据值</span>
+                                        </div>
+                                        <select id="filterValueSelect" class="full-select"></select>
+                                    </div>
+                                    <div id="filterSummary" class="import-filter-summary"></div>
+                                    <div class="section-head">
+                                        <span>分组依据列</span>
+                                    </div>
+                                    <select id="groupColumnSelect" class="full-select"></select>
+                                    <div class="group-preview-section" id="groupPreviewSection" style="display:none;">
+                                        <div class="section-head">
+                                            <span>分组预览</span>
+                                        </div>
+                                        <div id="groupPreviewList"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 性别列导入 -->
+                            <div class="group-import-section" id="genderImportSection" style="display:none;">
+                                <label class="check-row">
+                                    <input type="checkbox" id="enableGenderImport">
+                                    <span>同时导入性别</span>
+                                </label>
+                                <div id="genderImportControls" style="display:none;">
+                                    <div class="section-head">
+                                        <span>性别依据列</span>
+                                    </div>
+                                    <select id="genderColumnSelect" class="full-select"></select>
+                                    <div class="import-filter-summary" style="font-size:11px;color:#64748b;margin-top:4px;">
+                                        支持自动识别：男 / male / ♂ → 男；女 / female / ♀ → 女
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 标签列导入 -->
+                            <div class="group-import-section" id="tagImportSection" style="display:none;">
+                                <label class="check-row">
+                                    <input type="checkbox" id="enableTagImport">
+                                    <span>同时导入标签</span>
+                                </label>
+                                <div id="tagImportControls" style="display:none;">
+                                    <div class="section-head">
+                                        <span>标签依据列</span>
+                                    </div>
+                                    <select id="tagColumnSelect" class="full-select"></select>
+                                    <div class="import-filter-summary" style="font-size:11px;color:#64748b;margin-top:4px;">
+                                        每行的值将作为一个标签；若值以 emoji 开头，emoji 自动作为标签图标；否则根据文本内容自动分配一个相关的 emoji（避免与已有标签重复）
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button id="confirmImportBtn" class="io-btn primary" style="width:100%;">确认导入</button>
+                            <div class="section-head">
+                                <span>数据预览</span>
+                            </div>
+                            <div id="tablePreview" class="table-preview"></div>
+                        </div>
+                    </div>
+
+                    <div class="io-divider"></div>
+
+                    <div class="io-section">
+                        <div class="io-title">配置管理</div>
+                        <div class="io-btn-row">
+                            <button id="exportConfigBtn" class="io-btn ghost">导出配置</button>
+                            <button id="importConfigBtn" class="io-btn ghost">导入配置</button>
+                            <button id="saveConfigAsBtn" class="io-btn ghost">保存为…</button>
+                            <input type="file" id="configFileInput" class="file-input" accept=".json">
+                        </div>
+                        <div id="configList" class="config-list"></div>
+
+                        <div class="io-divider" style="margin:10px 0;"></div>
+
+                        <div class="io-title">GitHub 同步</div>
+                        <div class="webdav-settings">
+                            <input type="text" id="githubOwner" class="webdav-input" placeholder="GitHub 用户名 (如 username)">
+                            <input type="text" id="githubRepo" class="webdav-input" placeholder="仓库名 (如 blog)">
+                            <input type="text" id="githubPath" class="webdav-input" placeholder="文件路径 (如 data/seats-configs.json)" value="data/seats-configs.json">
+                            <div class="github-token-row">
+                                <input type="password" id="githubToken" class="webdav-input" placeholder="Personal Access Token" autocomplete="off">
+                                <button id="githubTokenClearBtn" type="button" class="io-btn ghost github-token-clear" title="清除当前会话保存的 Token">清除</button>
+                            </div>
+                            <div id="githubTokenStatus" class="github-token-status" aria-live="polite"></div>
+                            <div class="io-btn-row">
+                                <button id="githubSaveSettingsBtn" class="io-btn ghost">保存设置</button>
+                                <button id="githubTestBtn" class="io-btn ghost">测试连接</button>
+                                <button id="githubSyncUpBtn" class="io-btn ghost">上传</button>
+                                <button id="githubSyncDownBtn" class="io-btn ghost">下载</button>
+                            </div>
+                            <div id="githubStatus" class="webdav-status"></div>
+                        </div>
+
+                        <button id="clearStorageBtn" class="danger-btn full-width">清除所有数据</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入xlsx.js库用于解析Excel文件 -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <!-- 引入html2canvas库用于导出图片 -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+    <script type="module" src="seats-generator.js"></script>
+</body>
+
+</html>
